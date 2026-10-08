@@ -1,0 +1,10 @@
+[project]
+name = "ai-all-in-one"
+version = "0.1.0"
+description = "AI All In One"
+authors = [
+    {name = "Lee-Dongwook", email = "dlehddnr0713@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.13,<4.0"
+
