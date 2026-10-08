@@ -85,6 +85,79 @@ OLLAMA_TIMEOUT_SECONDS=60
 Service로 API 서버에서만 접근하게 구성하세요. 별도 Ollama 서버를 쓰는 경우에도 `/models`,
 `/chat` API의 사용법은 같습니다.
 
+## 사내 공급망 스캐폴딩
+
+이 프로젝트는 연습용으로도 코드부터 배포까지 외부 의존을 줄이는 사내 공급망을 목표로 합니다.
+현재는 **설계와 템플릿만** 추가되어 있으며, Harbor·Gitea·CI Runner는 아직 배포하거나 연결하지
+않았습니다. 따라서 지금의 Compose 실행 방식은 계속 사용할 수 있습니다.
+
+### 목표 구조
+
+```text
+개발자
+  → 사내 Gitea (코드·워크플로)
+  → 사내 Actions Runner (테스트·빌드·검사)
+  → Harbor (이미지·서명·검사 결과)
+  → API 서버 / Ollama GPU 서버
+```
+
+각 도구의 책임은 다음처럼 나눕니다.
+
+| 구성 요소 | 책임 | 이번 스캐폴딩 상태 |
+| --- | --- | --- |
+| Gitea | 사내 Git 및 CI 워크플로 관리 | 워크플로 예시 추가 |
+| Gitea Actions Runner | 테스트·이미지 빌드 실행 | 설치 전 |
+| Harbor | 사내 이미지 저장, 취약점 검사, 서명 정책 | 설치 전 |
+| Cosign | CI가 만든 컨테이너 이미지 서명 | 키·정책 설정 전 |
+| Ollama GPU 서버 | 승인된 모델의 추론 전용 실행 | 기존 Compose로 실행 가능 |
+
+### 추가된 스캐폴딩 파일
+
+```text
+.gitea/workflows/supply-chain.yaml.example
+infrastructure/supply-chain/
+├── inventory.example.yaml                 # 서버 역할·네트워크 경계 기록 템플릿
+├── models/approved-models.example.yaml    # 승인 모델 대장 템플릿
+└── policies/image-policy.example.yaml     # 이미지 배포 정책 템플릿
+```
+
+`*.example` 파일에는 실제 호스트명, IP, 인증 정보, 서명 키를 넣지 않습니다. 운영을 시작할 때
+사내의 보호된 설정 저장소에 복사해 실제 값을 채웁니다. 특히 모델 대장은 모델 바이너리를 저장하는
+곳이 아니라, 어떤 모델을 어떤 근거와 버전으로 반입해도 되는지 기록하는 승인 문서입니다.
+
+### 목표 배포 흐름
+
+1. 개발자가 사내 Gitea에 코드를 푸시합니다.
+2. 내부 Runner가 테스트를 실행하고 API 이미지를 빌드합니다.
+3. 이미지 취약점 검사와 SBOM 생성 결과를 확인합니다.
+4. 통과한 이미지만 내부 Harbor에 푸시하고 Cosign으로 서명합니다.
+5. API 서버는 `latest` 같은 가변 태그 대신 서명된 이미지 digest를 기준으로 배포합니다.
+6. Ollama 모델은 통제된 스테이징 환경에서만 반입하고 승인 대장에 기록한 뒤 GPU 서버에 설치합니다.
+
+`supply-chain.yaml.example`은 자동 실행되지 않는 템플릿입니다. 외부 Git 호스트에서 액션을
+내려받지 않도록 Gitea의 `builtin:checkout`을 사용합니다. 활성화 전에는 Runner에
+Docker·Trivy·Cosign을 설치한 뒤 아래 시크릿을 등록해야 합니다.
+
+```text
+REGISTRY_USERNAME
+REGISTRY_PASSWORD
+COSIGN_PRIVATE_KEY
+```
+
+시크릿 값, 실제 `.env`, Cosign 개인 키, Harbor 관리자 비밀번호는 저장소에 커밋하지 않습니다.
+
+### 도입 순서
+
+1. Linux 관리 서버에 Harbor를 HTTPS로 설치하고 `ai` 프로젝트를 만듭니다.
+2. Gitea와 자체 Actions Runner를 설치해 코드와 CI 실행 위치를 내부로 옮깁니다.
+3. 예시 워크플로를 실제 내부 주소·미러 액션·시크릿에 맞춰 활성화합니다.
+4. Harbor의 취약점 검사와 서명된 이미지만 pull하도록 하는 정책을 켭니다.
+5. 이미지 digest 기반 배포 및 Ollama 모델 승인 절차를 적용합니다.
+
+Kubernetes는 여러 API 인스턴스, 여러 GPU 노드, 자동 복구나 확장이 필요해졌을 때 추가합니다.
+현재의 소규모 학습 단계에서는 Docker Compose + Harbor + Gitea Runner가 더 이해하고 운영하기
+쉽습니다.
+
 ## 개발 환경에서 직접 실행
 
 Docker 대신 Python 환경에서 API만 실행하려면 Python 3.13 이상과
@@ -129,10 +202,12 @@ src/app/
 └── core/
     ├── shared/                  # 설정, 쿠키, 오류, 보안 유틸
     └── utils.py                 # Origin / Redirect URI 검증
+
+infrastructure/supply-chain/     # 사내 공급망 설계·정책·승인 대장 템플릿
 ```
 
 ## 다음 구현 순서
 
-1. 서비스의 첫 AI 사용 시나리오와 요청·응답 형식을 확정합니다.
-2. 그 시나리오용 API 라우터와 supervisor 그래프 노드를 추가합니다.
-3. Ollama 모델별 프롬프트·권한·대화 이력 정책을 추가합니다.
+1. Harbor를 별도 Linux 관리 서버에 설치하고 내부 TLS·프로젝트를 구성합니다.
+2. Gitea와 자체 Actions Runner를 연결해 예시 CI를 실제 내부 워크플로로 전환합니다.
+3. Ollama 모델별 승인·반입·프롬프트·권한·대화 이력 정책을 추가합니다.

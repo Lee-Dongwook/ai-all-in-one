@@ -1,0 +1,15 @@
+# This is an approval ledger, not a model binary store.
+# Keep a completed copy outside this repository or in a protected internal repo.
+models:
+  - id: example-model
+    ollama_name: replace-with-approved-model:tag
+    status: pending_approval
+    source_url: https://example.invalid/model-source
+    source_revision: replace-with-version-or-digest
+    license: confirm-before-approval
+    approved_by: null
+    approved_at: null
+    allowed_use: []
+    notes: >-
+      Download only from a controlled staging host. Record the resolved version
+      and validation result before installing it on the Ollama GPU server.

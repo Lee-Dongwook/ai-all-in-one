@@ -1,0 +1,44 @@
+# Template only: the .example suffix prevents Gitea Actions from running it.
+# Before enabling, create the listed secrets and replace example.internal
+# values. This uses Gitea's built-in checkout action, so it does not download
+# an action from an external Git host.
+name: supply-chain
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+jobs:
+  verify-build-publish:
+    runs-on: self-hosted
+    env:
+      REGISTRY: harbor.example.internal
+      IMAGE: harbor.example.internal/ai/ai-all-in-one
+    steps:
+      - name: Check out source from internal Gitea
+        uses: builtin:checkout
+
+      - name: Run application tests
+        run: PYTHONPATH=src python -m unittest discover -s tests -v
+
+      - name: Build image with immutable source revision label
+        run: >-
+          docker build
+          --label org.opencontainers.image.revision=${{ gitea.sha }}
+          --tag $IMAGE:${{ gitea.sha }} .
+
+      - name: Scan image before publishing
+        run: trivy image --exit-code 1 --severity HIGH,CRITICAL $IMAGE:${{ gitea.sha }}
+
+      - name: Push image to internal Harbor
+        run: |
+          echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY" \
+            --username "$REGISTRY_USERNAME" --password-stdin
+          docker push "$IMAGE:${{ gitea.sha }}"
+
+      - name: Sign pushed image with internal key
+        run: cosign sign --key env://COSIGN_PRIVATE_KEY "$IMAGE:${{ gitea.sha }}"
+
+# Required secrets: REGISTRY_USERNAME, REGISTRY_PASSWORD, COSIGN_PRIVATE_KEY.
+# Add SBOM generation and digest-based deployment after the registry is ready.

@@ -1,0 +1,31 @@
+# Training environment inventory. Copy to inventory.yaml and replace placeholders.
+# Do not commit real IP addresses, credentials, or private hostnames.
+control_plane:
+  hostname: control-plane.example.internal
+  roles:
+    - gitea
+    - gitea-actions-runner
+    - harbor
+  network_zone: management
+
+application_host:
+  hostname: api.example.internal
+  roles:
+    - ai-all-in-one-api
+  network_zone: application
+
+gpu_runtime:
+  hostname: ollama-gpu.example.internal
+  roles:
+    - ollama
+  network_zone: inference
+
+boundaries:
+  public_inbound: []
+  allowed_paths:
+    - source: gitea-actions-runner
+      destination: harbor
+      purpose: push_signed_images
+    - source: application_host
+      destination: gpu_runtime
+      purpose: ollama_api

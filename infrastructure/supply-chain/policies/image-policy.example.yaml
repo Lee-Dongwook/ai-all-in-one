@@ -1,0 +1,15 @@
+# Intended deployment policy. This file documents the rule set; enforcement is
+# configured later in Harbor, the CI runner, and the deployment platform.
+policy:
+  allowed_registries:
+    - harbor.example.internal
+  require_digest_reference: true
+  require_signature: true
+  require_vulnerability_scan: true
+  maximum_allowed_severity: high
+  mutable_tags_forbidden:
+    - latest
+  required_metadata:
+    - source_revision
+    - build_timestamp
+    - sbom_reference
