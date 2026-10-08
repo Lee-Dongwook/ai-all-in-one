@@ -6,6 +6,8 @@ from typing import Any, ClassVar
 
 class ErrorCode(str, Enum):
     ETAG_CONFLICT = "etag_conflict"
+    OLLAMA_UNAVAILABLE = "ollama_unavailable"
+    OLLAMA_INVALID_RESPONSE = "ollama_invalid_response"
 
 class AppError(Exception):
     status: ClassVar[HTTPStatus] = HTTPStatus.BAD_REQUEST

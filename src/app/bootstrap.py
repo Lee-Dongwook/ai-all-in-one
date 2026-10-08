@@ -11,6 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 
+from .api.ollama import router as ollama_router
 from .core.shared.errors import AppError
 
 
@@ -42,6 +43,8 @@ def create_app() -> FastAPI:
     async def health_check() -> dict[str, str]:
         """Lightweight endpoint for local checks and deployment probes."""
         return {"status": "ok"}
+
+    app.include_router(ollama_router)
 
     @app.get("/openapi.yaml", include_in_schema=False)
     async def get_openapi_yaml() -> Response:
