@@ -1,0 +1,4 @@
+# Linux + NVIDIA GPU host only. Run together with compose.yaml.
+services:
+  ollama:
+    gpus: all
