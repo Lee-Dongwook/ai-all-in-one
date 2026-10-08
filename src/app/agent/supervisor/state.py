@@ -6,7 +6,7 @@ from langgraph.managed import RemainingSteps
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from typing_extensions import NotRequired
 
-from ...core import logger
+from ...core.logger import logger
 
 class BaseCondition(BaseModel):
     pass

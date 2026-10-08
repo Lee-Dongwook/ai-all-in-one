@@ -5,7 +5,7 @@ from http import HTTPStatus
 from typing import Any, ClassVar
 
 class ErrorCode(str, Enum):
-    ETAG_CONFICT = "etag_conflict"
+    ETAG_CONFLICT = "etag_conflict"
 
 class AppError(Exception):
     status: ClassVar[HTTPStatus] = HTTPStatus.BAD_REQUEST

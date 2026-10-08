@@ -1,17 +1,8 @@
-import json
 from typing import Any
 
-from fastapi import HTTPException, status
-from langchain_core.messages import(
-    AIMessage,
-    AnyMessage,
-    ChatMessage,
-    HumanMessage,
-    ToolMessage,
-)
-from pydantic import ValidationError
+from langchain_core.messages import AnyMessage, HumanMessage
 
-from ...core import logger
+from ...core.logger import logger
 from .state import AgentState
 
 def _prepare_initial_messages(
@@ -26,11 +17,14 @@ def setup_initial_state(
     user_uuid: str,
     init_params: dict[str, Any] | None = None
 ) -> AgentState:
-    initial_state = AgentState(
-        messages=messages,
-        user_uuid=user_uuid,
-        structured_response=None,
-    )
+    """Build the smallest valid state passed into the supervisor graph."""
+    initial_state: AgentState = {
+        "messages": messages,
+        "user_uuid": user_uuid,
+        "structured_response": {},
+        "unlocked_tools": [],
+        "values": dict(init_params or {}),
+    }
 
-    logger.info(f"init_params={init_params}")
-    #TODO:
+    logger.info("Supervisor initial state prepared for user=%s", user_uuid)
+    return initial_state

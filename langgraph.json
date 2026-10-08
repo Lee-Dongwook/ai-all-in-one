@@ -4,6 +4,6 @@
     "supervisor": "app.agent.supervisor.workflow:create_graph"
   },
   "http": {
-    "app": "app.bootstrap.langgraph_app:app"
+    "app": "app.bootstrap:app"
   }
 }
